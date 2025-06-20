@@ -18,9 +18,7 @@
 ### Branch Naming
 - Each developer creates a new branch for every task.
 - Use feature branches: `feature/<task-key>-short-description`
-  - Example: `feature/SCRUM-123-unit-combat-system`
-- Use bugfix branches: `bugfix/<task-key>-short-description`
-  - Example: `bugfix/SCRUM-145-ui-resource-display`
+- Use bugfix branches: `fix/<task-key>-short-description`
 
 ### Commit Message Format
 Use tags in square brackets to indicate the type of change. The format is:
@@ -32,9 +30,9 @@ Use tags in square brackets to indicate the type of change. The format is:
 - `[doc]` – documentation
 
 #### Examples:
-- `[feature] PROJ-123: added unit movement system`
-- `[fix] PROJ-145: fixed incorrect resource counter`
-- `[doc] PROJ-130: updated README with install steps`
+- `[feature] SCRUM-123: added unit movement system`
+- `[fix] SCRUM-145: fixed incorrect resource counter`
+- `[doc] SCRUM-130: updated README with install steps`
 
 ## Team Agreements
 - Each sprint must result in a playable version with new or improved functionality.
