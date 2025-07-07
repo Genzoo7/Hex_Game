@@ -3,23 +3,25 @@ const COLOR = {
     GREEN_ROAD: "#83a866",
     BLUE_ROAD: "#1793d1",
     YELLOW_ROAD: "#f7ad4e",
-    FREE_ROAD: "#79747e",
+    FREE_ROAD: "transparent",
     RED_VERTEX: "#700d13",
     GREEN_VERTEX: "#007a3d",
     BLUE_VERTEX: "#014898",
     YELLOW_VERTEX: "#f29610",
-    FREE_VERTEX: "#000000",
+    FREE_VERTEX: "#5D5961",
     RED_HEX: "#cc3333",
     GREEN_HEX: "#a4d280",
     GRAY_HEX: "#a29a85",
     YELLOW_HEX: "#f7c627",
     FREE_HEX: "#1b2e51",
-    BG: "#79747e"
+    //BG: "#79747e",
+    BG: "black",
 };
 const SCALE = 90;
 const OFFSET = 4;
 const PADDING = 1;
-const VERTEX_SIZE = 0.375 * SCALE;
+const FONT_SIZE = 0.34 * SCALE;
+const VERTEX_SIZE = 0.3 * SCALE;
 const canvas = document.getElementById("board");
 const ctx = canvas.getContext("2d");
 
@@ -73,15 +75,24 @@ class Edge {
   }
 
   draw(ctx) {
-    ctx.save();
-    // set pivot on rect center
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.angle);
-    // draw rect with center pos
-    ctx.fillStyle = this.color;
-    ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-    ctx.restore();
-  }
+  ctx.save();
+
+  // pivot on center
+  ctx.translate(this.x, this.y);
+  ctx.rotate(this.angle);
+
+  ctx.fillStyle = this.color;
+  ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+
+  /*
+  if (this.color !== COLOR.FREE_ROAD){
+    ctx.strokeStyle = COLOR.FREE_VERTEX;   
+    ctx.lineWidth = 2;           
+    ctx.strokeRect(-this.width / 2, -this.height / 2, this.width, this.height);
+  }*/
+
+  ctx.restore();
+}
 
   contains(clickX, clickY) {
     const dx = clickX - this.x;
@@ -94,27 +105,28 @@ class Edge {
     const localY = dx * sin + dy * cos;
 
     return (
-      localX >= -this.width / 2 &&
-      localX <= this.width / 2 &&
-      localY >= -this.height / 2 &&
-      localY <= this.height / 2
+      localX >= -this.width / 3 &&
+      localX <= this.width / 3 &&
+      localY >= -this.height / 1.5 &&
+      localY <= this.height / 1.5
     );
   }
 
-  setColor(color, ctx){
+  setColor(color){
     this.color = color;
-    this.draw(ctx);
   }
 }
 
 class Hexagon {
-  constructor(x, y, size, color, id, margin = 5) {
+  constructor(x, y, size, color, number, id, robber = false, margin = 5) {
     this.x = y; // hex center pos
     this.y = x;
     this.size = size; // radius
     this.color = color;
     this.id = id;
     this.margin = margin;
+    this.number = number;
+    this.robber = robber;
   }
 
   getPoints(size = this.size) {
@@ -138,8 +150,24 @@ class Hexagon {
     ctx.closePath();
     ctx.fillStyle = this.color;
     ctx.fill();
-    ctx.strokeStyle = this.color;
-    ctx.stroke();
+    //ctx.strokeStyle = "gray";
+    //ctx.lineWidth = 3;
+    //ctx.stroke();
+    const fontStr = FONT_SIZE.toString() + "px Arial";
+    if (this.number !== undefined) {
+      ctx.fillStyle = "#000"; // lub inny kolor tekstu
+      ctx.font = fontStr;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(this.number.toString(), this.x, this.y);
+    }
+
+    if (this.robber) {
+      ctx.beginPath();
+      ctx.arc(this.x-30, this.y+45, this.size * 0.2, 0, 2 * Math.PI); // rozmiar kropki to 20% promienia
+      ctx.fillStyle = "#000";
+      ctx.fill();
+    }
   }
 
   contains(clickX, clickY) {
@@ -158,6 +186,19 @@ class Hexagon {
     }
 
     return inside;
+  }
+
+
+  setRobber() {
+    this.robber = true;
+  }
+
+  removeRobber() {
+    this.robber = false;
+  }
+
+  toggleRobber() {
+    this.robber = !this.robber;
   }
 }
 
@@ -194,43 +235,21 @@ fetch("http://localhost:3001/api/get_new_board")
   })
   .catch(err => console.error("Fetch error:", err));
 
-
 // draw board with fetched graph
 function drawBoard(graph) {
   const { vertices, edges, hexes } = graph;
 
-  // draw edge objects with listener and store it
-  edge_objects = [];
-  for (const key in edges) {
-    const [v1, v2] = JSON.parse(key);
-    let edge = edges[key];
-    const newEdge = new Edge((SCALE/2+OFFSET*1.5)*edge.centerX+0.625*SCALE, SCALE*edge.centerY+0.5*SCALE, 0.6*SCALE, 0.18*SCALE, edge.angle, edge.color, `${v1}-${v2}`);
-    edge_objects.push(newEdge);
-    newEdge.draw(ctx);
-  }
-
-  canvas.addEventListener("click", function (event) {
-    const rect = canvas.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
-
-    for (const edge of edge_objects) {
-      if (edge.contains(clickX, clickY)) {
-        console.log("Edge clicked ID:", edge.id);
-        edge.setColor(COLOR.RED_ROAD, ctx);
-        break;
-      }
-    }
-  });
-
   // draw hex objects with listener and store it
   hex_objects = [];
-  for (const hex of hexes) {
-    const [x, y] = hex;
+  const hexes_keys = Object.keys(hexes);
+  for (const hex of hexes_keys) {
+    const pos = hex.split(",");
+    x = pos[0];
+    y = pos[1];
     const center = getPosOfVerticesBelongingToHex([x,y])[0];
     const centerX = center[0];
     const centerY = center[1];
-    let new_hex = new Hexagon((SCALE/2+SCALE*0.075)*centerX+SCALE*1.7, SCALE*centerY+0.5*SCALE,SCALE*1.1, COLOR.RED_HEX, `${x}-${y}`, SCALE/5);
+    let new_hex = new Hexagon((SCALE/2+SCALE*0.075)*centerX+SCALE*1.7, SCALE*centerY+0.5*SCALE,SCALE*1.1, hexes[pos].color, hexes[pos].diceNumber, `${x}-${y}`, hexes[pos].robber, SCALE/5);
     hex_objects.push(new_hex);
     new_hex.draw(ctx);
   }
@@ -243,6 +262,8 @@ function drawBoard(graph) {
     for (const hex of hex_objects) {
       if (hex.contains(clickX, clickY)) {
         console.log("Hex clicked ID:", hex.id);
+        hex.toggleRobber();
+        updateBoard();
         break;
       }
     }
@@ -270,4 +291,36 @@ function drawBoard(graph) {
       }
     }
   });
+
+  // draw edge objects with listener and store it
+  edge_objects = [];
+  for (const key in edges) {
+    const [v1, v2] = JSON.parse(key);
+    let edge = edges[key];
+    const newEdge = new Edge((SCALE/2+OFFSET*1.5)*edge.centerX+0.625*SCALE, SCALE*edge.centerY+0.5*SCALE, 0.9*SCALE, 0.18*SCALE, edge.angle, edge.color, `${v1}-${v2}`);
+    edge_objects.push(newEdge);
+    newEdge.draw(ctx);
+  }
+
+  canvas.addEventListener("click", function (event) {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    for (const edge of edge_objects) {
+      if (edge.contains(clickX, clickY)) {
+        console.log("Edge clicked ID:", edge.id);
+        edge.setColor(COLOR.RED_ROAD);
+        updateBoard();
+        break;
+      }
+    }
+  });
+}
+
+function updateBoard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let hex of hex_objects) { hex.draw(ctx); }
+  for (let edge of edge_objects){ edge.draw(ctx); }
+  for (let vertex of vertex_objects){ vertex.draw(ctx); }
 }

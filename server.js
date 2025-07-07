@@ -1,9 +1,11 @@
 const express = require("express");
 const cors = require("cors");
 
-const { generateGraph } = require("./graph/graphGenerator");
+const { Game } = require("./game/game");
 const app = express();
 const PORT = 3001;
+const Games = {}; // id: <uuid>, gameClass: Game
+
 
 app.use(cors({
   origin: `http://localhost:${PORT}`,
@@ -12,9 +14,12 @@ app.use(cors({
 app.use(express.static("public"));
 
 app.get('/api/get_new_board', (req, res) => {
-  const graph = generateGraph();
-  res.json(graph);
+  const uuid = "1";
+  const game = new Game(uuid);
+  Games[uuid] = game;
+  res.json(game.getGraph());
 });
+
 
 app.get("/", async (req, res) => {
   res.render("index.html");

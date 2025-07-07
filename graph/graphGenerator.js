@@ -8,7 +8,7 @@ const COLOR = {
     GREEN_ROAD: "#83a866",
     BLUE_ROAD: "#1793d1",
     YELLOW_ROAD: "#f7ad4e",
-    FREE_ROAD: "#79747e",
+    FREE_ROAD: "transparent",
     RED_VERTEX: "#700d13",
     GREEN_VERTEX: "#007a3d",
     BLUE_VERTEX: "#014898",
@@ -19,9 +19,30 @@ const COLOR = {
     GRAY_HEX: "#a29a85",
     YELLOW_HEX: "#f7c627",
     FREE_HEX: "#1b2e51",
-    //BG: "#73bee3",
+    LIGHTGREEN_HEX: "#affdaf",
     BG: "#79747e"
 };
+
+const RESOURCE = {
+  BRICK: {
+    COLOR: COLOR.RED_HEX,
+  },
+  WOOD: {
+    COLOR: COLOR.GREEN_HEX,
+  },
+  WHEAT: {
+    COLOR: COLOR.YELLOW_HEX,
+  },
+  SHEEP: {
+    COLOR: COLOR.LIGHTGREEN_HEX
+  },
+  STONE: {
+    COLOR: COLOR.GRAY_HEX,
+  },
+  FREE: {
+    COLOR: COLOR.FREE_HEX,
+  }
+}
 
 function removeRandomElements(hexes, removal, count) {
   const removable = hexes.filter(h =>
@@ -49,7 +70,7 @@ function initHexesBoard() {
     [0,4], [2,4],
   ]
 
-  const hexes = [];
+  let hexes = [];
   for (let i = 0; i < BOARD_WIDTH; i++) {
     for (let j = 0; j < BOARD_HEIGHT; j++) {
       hexes.push([i, j]);
@@ -58,7 +79,32 @@ function initHexesBoard() {
 
   const finalHexes = removeRandomElements(hexes, removal, 25-GAME_HEX_COUNT);
 
-  return finalHexes;
+  hexes = {};
+  const keys = Object.keys(RESOURCE);
+  for (const hex of finalHexes){
+    i = hex[0];
+    j = hex[1];
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    const randomResource = RESOURCE[randomKey];
+    const allowed = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
+    let randomNumber = allowed[Math.floor(Math.random() * allowed.length)]; // [2,6] and [8,12]
+    let robber = false;
+    if (randomKey === "FREE"){
+      keys.pop("FREE");
+      randomNumber = "";
+      robber = true;
+    }
+
+    hexes[[i,j]] = {
+        resource: randomKey,
+        color: randomResource.COLOR,
+        diceNumber: randomNumber,
+        robber: robber,
+    };
+  }
+  
+
+  return hexes;
 }
 
 function getPosOfVerticesBelongingToHex(pos) {
@@ -91,9 +137,12 @@ function generateGraph() {
   const edges = {};
   const vertices = {};
   const hexes = initHexesBoard();
-  for (const hex of hexes) {
-    i = hex[0];
-    j = hex[1];
+  const hex_keys = Object.keys(hexes);
+
+  for (const hex of hex_keys) {
+    const pos = hex.split(",");
+    i = pos[0];
+    j = pos[1];
       const verts = getPosOfVerticesBelongingToHex([i, j]);
       if (!verts) continue;
       const n = verts.length;
