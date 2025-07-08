@@ -1,48 +1,10 @@
 // Max hexagons in row and column
 const BOARD_WIDTH = 5;
 const BOARD_HEIGHT = 5;
-
 const GAME_HEX_COUNT = 19;
-const COLOR = {
-    RED_ROAD: "#aa2009",
-    GREEN_ROAD: "#83a866",
-    BLUE_ROAD: "#1793d1",
-    YELLOW_ROAD: "#f7ad4e",
-    FREE_ROAD: "transparent",
-    RED_VERTEX: "#700d13",
-    GREEN_VERTEX: "#007a3d",
-    BLUE_VERTEX: "#014898",
-    YELLOW_VERTEX: "#f29610",
-    FREE_VERTEX: "#000000",
-    RED_HEX: "#cc3333",
-    GREEN_HEX: "#a4d280",
-    GRAY_HEX: "#a29a85",
-    YELLOW_HEX: "#f7c627",
-    FREE_HEX: "#1b2e51",
-    LIGHTGREEN_HEX: "#affdaf",
-    BG: "#79747e"
-};
-
-const RESOURCE = {
-  BRICK: {
-    COLOR: COLOR.RED_HEX,
-  },
-  WOOD: {
-    COLOR: COLOR.GREEN_HEX,
-  },
-  WHEAT: {
-    COLOR: COLOR.YELLOW_HEX,
-  },
-  SHEEP: {
-    COLOR: COLOR.LIGHTGREEN_HEX
-  },
-  STONE: {
-    COLOR: COLOR.GRAY_HEX,
-  },
-  FREE: {
-    COLOR: COLOR.FREE_HEX,
-  }
-}
+const ROAD_TYPE = ["FREE", "RED", "GREEN", "BLUE", "YELLOW"];
+const VERTEX_TYPE = [...ROAD_TYPE];
+const RESOURCE_TYPE = ["BRICK", "WOOD", "WHEAT", "SHEEP", "STONE", "FREE"];
 
 function removeRandomElements(hexes, removal, count) {
   const removable = hexes.filter(h =>
@@ -63,6 +25,7 @@ function removeRandomElements(hexes, removal, count) {
 
 // Initialize full board; BOARD_WIDTH x BOARD_HEIGHT hexagons
 function initHexesBoard() {
+  const hexWithdraw = {};
   let removal = [
     [0,0], [0,1], [0,2], [0,3], [0,4], 
     [4,0], [4,1], [4,2], [4,3], [4,4],
@@ -80,12 +43,11 @@ function initHexesBoard() {
   const finalHexes = removeRandomElements(hexes, removal, 25-GAME_HEX_COUNT);
 
   hexes = {};
-  const keys = Object.keys(RESOURCE);
+  const keys = [...RESOURCE_TYPE];
   for (const hex of finalHexes){
     i = hex[0];
     j = hex[1];
     const randomKey = keys[Math.floor(Math.random() * keys.length)];
-    const randomResource = RESOURCE[randomKey];
     const allowed = [2, 3, 4, 5, 6, 8, 9, 10, 11, 12];
     let randomNumber = allowed[Math.floor(Math.random() * allowed.length)]; // [2,6] and [8,12]
     let robber = false;
@@ -95,16 +57,19 @@ function initHexesBoard() {
       robber = true;
     }
 
+    (hexWithdraw[randomNumber] ??= []).push([i, j]);
+
+
     hexes[[i,j]] = {
         resource: randomKey,
-        color: randomResource.COLOR,
         diceNumber: randomNumber,
         robber: robber,
+        belongingVertices: [],
     };
   }
-  
+  if (keys.includes("FREE")){ return initHexesBoard(); }
 
-  return hexes;
+  return {hexes, hexWithdraw};
 }
 
 function getPosOfVerticesBelongingToHex(pos) {
@@ -136,7 +101,7 @@ function getPosOfVerticesBelongingToHex(pos) {
 function generateGraph() {
   const edges = {};
   const vertices = {};
-  const hexes = initHexesBoard();
+  const {hexes, hexWithdraw} = initHexesBoard();
   const hex_keys = Object.keys(hexes);
 
   for (const hex of hex_keys) {
@@ -145,6 +110,7 @@ function generateGraph() {
     j = pos[1];
       const verts = getPosOfVerticesBelongingToHex([i, j]);
       if (!verts) continue;
+      hexes[[i,j]].belongingVertices = verts;
       const n = verts.length;
 
       for (let k = 0; k < n; k++) {
@@ -158,10 +124,14 @@ function generateGraph() {
           centerX: (v1[0]+v2[0])/2,
           centerY: (v1[1]+v2[1])/2,
           angle: (k*60+30)%360,
-          color: COLOR.FREE_ROAD,
+          type: ROAD_TYPE[0],
         };
         //edges[key2] = 1;
-        vertices[JSON.stringify(v1)] = 1;
+        vertices[JSON.stringify(v1)] = {
+          type: VERTEX_TYPE[0],
+          isSettlement: false,
+          isCity: false,
+        };
       }
   }
   return { vertices, edges, hexes };
